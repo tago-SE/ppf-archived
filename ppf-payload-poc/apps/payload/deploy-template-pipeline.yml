@@ -1,0 +1,229 @@
+parameters:
+- name: variableGroupName
+  type: string
+- name: serviceConnectionName
+  type: string
+- name: containerRegistryName
+  type: string
+- name: dockerTag
+  type: string
+- name: dockerfilePath
+  type: string
+- name: containerImageName
+  type: string
+- name: environmentName
+  type: string
+- name: azureCliApiVersion
+  type: string
+- name: appInsightsName
+  type: string
+- name: containerAppName
+  type: string
+- name: containerIdentityName
+  type: string
+- name: dbIdentityName 
+  type: string
+- name: dbUserName
+  type: string
+- name: dbHost 
+  type: string 
+- name: containerRegistryIdentityName
+  type: string
+- name: commonResourceGroupName
+  type: string 
+- name: containerResourceGroupName
+  type: string
+- name: containerSubscriptionId
+  type: string
+- name: serviceMsGraphIdentityResourceId
+  type: string 
+- name: deployedEnvironment
+  type: string 
+
+jobs:
+- job: Build
+  displayName: Build and Push Image
+  variables:
+    - group: ${{ parameters.variableGroupName }}
+  steps:
+    - task: AzureCLI@2
+      displayName: "Build and Push Container Image"
+      env:
+        SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+      inputs: 
+        azureSubscription: ${{ parameters.serviceConnectionName }}
+        scriptType: pscore
+        scriptLocation: inlineScript
+        inlineScript: |
+          $token = $(az acr login --name ${{ parameters.containerRegistryName }} --expose-token --output tsv --query accessToken)
+          docker login ${{ parameters.containerRegistryName }}.azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $token
+          [string] $appiConnectionString = (az monitor app-insights component show --resource-group ${{ parameters.containerResourceGroupName }} --app ${{ parameters.appInsightsName }} | convertfrom-json).connectionString
+          Write-Host "AppiConnectionString: $appiConnectionString"
+          docker image build . -f ${{ parameters.dockerfilePath }} --secret id=sytemauthtoken,env=SYSTEM_ACCESSTOKEN -t ${{ parameters.containerRegistryName }}.azurecr.io/${{ parameters.containerImageName }}:${{ parameters.dockerTag }} -t ${{ parameters.containerRegistryName }}.azurecr.io/${{ parameters.containerImageName }}:latest --build-arg NEXT_PUBLIC_SERVER_URL=$(Application.Host) --build-arg NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING="$appiConnectionString"
+          docker image push ${{ parameters.containerRegistryName }}.azurecr.io/${{ parameters.containerImageName }}:${{ parameters.dockerTag }} 
+          docker image push ${{ parameters.containerRegistryName }}.azurecr.io/${{ parameters.containerImageName }}:latest
+        workingDirectory: $(Build.SourcesDirectory)
+
+- deployment: Deploy
+  displayName: Deploy
+  dependsOn: Build
+  condition: succeeded()
+  environment: ${{ parameters.environmentName }}
+  variables:
+    - group: ${{ parameters.variableGroupName }}
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+          - task: AzureCLI@2
+            inputs:
+              azureSubscription: ${{ parameters.serviceConnectionName }}
+              scriptType: "pscore"
+              scriptLocation: "inlineScript"
+              failOnStandardError: false
+              inlineScript: |
+                az extension remove -n containerapp
+                az extension add -n containerapp --upgrade --allow-preview false
+                Write-Host "Getting existing resource values"
+
+                $dbIdentity = (az identity show  --resource-group ${{ parameters.commonResourceGroupName }} --name ${{ parameters.dbIdentityName }} | convertfrom-json)
+                [string] $dbIdentityClientId = $dbIdentity.clientId
+                Write-Host "DB Identity ClientId: $dbIdentityClientId"
+                [string] $dbConnectionString = "postgres://${{ parameters.dbUserName }}:@${{ parameters.dbHost }}:5432/postgres"
+                Write-Host "DB ConnectionString: $dbConnectionString"
+                
+                $identity = (az identity show  --resource-group ${{ parameters.containerResourceGroupName }} --name ${{ parameters.containerIdentityName }} | convertfrom-json)
+                [string] $clientId = $identity.clientId
+                [string] $principalId = $identity.principalId
+                [string] $keyVaultUrl = "https://$(KeyVault.Name).vault.azure.net"
+                Write-Host "ClientId: $($clientId)"
+                Write-Host "PrincipalId: $principalId"
+                Write-Host "keyVaultUrl: $keyVaultUrl"
+                [string] $appiConnectionString = (az monitor app-insights component show --resource-group ${{ parameters.containerResourceGroupName }} --app ${{ parameters.appInsightsName }} | convertfrom-json).connectionString
+                Write-Host "appiConnectionString: $appiConnectionString"
+                                
+                # Ensure MsGraph clientId is assigned to the ContainerApp
+                $msgraph_identity = (az identity show --ids ${{ parameters.serviceMsGraphIdentityResourceId }} | convertfrom-json)
+                [string] $msgraphClientId = $msgraph_identity.clientId
+                # Write-Host "msgraphClientId: $msgraphClientId"
+                # az containerapp identity assign -n ${{ parameters.containerAppName }} -g ${{ parameters.containerResourceGroupName }} --user-assigned ${{ parameters.serviceMsGraphIdentityResourceId }}
+
+                $jsonBody = @"
+                {
+                    "properties": {
+                        "configuration": {
+                            "registries": [
+                                {
+                                    "identity": "/subscriptions/${{ parameters.containerSubscriptionId}}/resourceGroups/${{ parameters.commonResourceGroupName }}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${{ parameters.containerRegistryIdentityName }}",
+                                    "server": "${{ parameters.containerRegistryName }}.azurecr.io",
+                                    "passwordSecretRef": "",
+                                    "username": ""
+                                }
+                            ],
+                            "secrets": [
+                              {
+                                  "name": "db-connection",
+                                  "value": "$dbConnectionString"
+                              },
+                              # {
+                              #     "name": "db-connection",
+                              #     "identity": "/subscriptions/${{ parameters.containerSubscriptionId}}/resourcegroups/${{ parameters.containerResourceGroupName }}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${{ parameters.containerIdentityName }}",
+                              #     "keyVaultUrl": "$keyVaultUrl/secrets/psql-app-uri"
+                              # },
+                              {
+                                  "name": "payload-secret",
+                                  "identity": "/subscriptions/${{ parameters.containerSubscriptionId}}/resourcegroups/${{ parameters.containerResourceGroupName }}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${{ parameters.containerIdentityName }}",
+                                  "keyVaultUrl": "$keyVaultUrl/secrets/payload-secret"
+                              },
+                              {
+                                  "name": "userflow-secret",
+                                  "identity": "/subscriptions/${{ parameters.containerSubscriptionId}}/resourcegroups/${{ parameters.containerResourceGroupName }}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${{ parameters.containerIdentityName }}",
+                                  "keyVaultUrl": "$keyVaultUrl/secrets/userflow-secret"
+                              },
+                              {
+                                  "name": "imageshop-api-key",
+                                  "identity": "/subscriptions/${{ parameters.containerSubscriptionId}}/resourcegroups/${{ parameters.containerResourceGroupName }}/providers/Microsoft.ManagedIdentity/userAssignedIdentities/${{ parameters.containerIdentityName }}",
+                                  "keyVaultUrl": "$keyVaultUrl/secrets/imageshop-api-key"
+                              }
+                            ]
+                        },
+                        "template": {
+                            "containers": [
+                                {
+                                    "image": "${{ parameters.containerRegistryName }}.azurecr.io/${{ parameters.containerImageName }}:${{ parameters.dockerTag }}",
+                                    "name": "${{ parameters.containerAppName }}"
+                                }
+                            ]
+                        }
+                    }
+                }
+                "@
+
+                Write-Host "Setting secrets"
+                az rest --method patch `
+                --url "/subscriptions/${{ parameters.containerSubscriptionId}}/resourceGroups/${{ parameters.containerResourceGroupName }}/providers/Microsoft.App/containerApps/${{ parameters.containerAppName }}?api-version=${{ parameters.azureCliApiVersion}}" `
+                --headers Content-Type=application/json `
+                --body $jsonBody
+
+                if ($LASTEXITCODE -ne 0) {
+                  Write-Error "Error occurred during az rest command."
+                  exit $LASTEXITCODE
+                }
+
+                Write-Host "Patch done"
+                (az containerapp show --resource-group ${{ parameters.containerResourceGroupName }} --name ${{ parameters.containerAppName }} | convertfrom-json).properties.provisioningState
+                (az containerapp show --resource-group ${{ parameters.containerResourceGroupName }} --name ${{ parameters.containerAppName }} | convertfrom-json).properties.runningstatus
+                start-sleep 30
+
+                Write-Host "Adding env variables"
+                az containerapp update `
+                --name ${{ parameters.containerAppName }} `
+                --resource-group ${{ parameters.containerResourceGroupName }} `
+                --set-env-vars `
+                DEPLOYED_ENV=${{ parameters.deployedEnvironment }} `
+                APP_MANAGED_IDENTITY_CLIENTID=$clientId `
+                APP_MANAGED_IDENTITY_OBJECTID=$principalId `
+                PAYLOAD_PUBLIC_SITE_URL=$(Application.RemoteHosts) `
+                PAYLOAD_PUBLIC_SERVER_URL=$(Application.Host) `
+                PAYLOAD_SECRET=secretref:payload-secret `
+                DATABASE_URI=secretref:db-connection `
+                DATABASE_CLIENT_ID=$dbIdentityClientId `
+                AUTH_URL=$(Application.Host) `
+                OAUTH2_CLIENT_SECRET=secretref:userflow-secret `
+                OAUTH2_CLIENT_ID=$(Curity.UserFlow.ClientId) `
+                OAUTH2_CLIENT_SCOPE=$(Curity.UserFlow.Scope) `
+                OAUTH2_ISSUER=$(Curity.UserFlow.Issuer) `
+                MSGRAPH_CLIENT_DEBUG=$(MsGraph.Debug) `
+                MSGRAPH_CLIENT_ID=$msgraphClientId `
+                MSGRAPH_GROUPID_FOR_SUPERADMIN=$(MsGraph.SuperAdminGroupId) `
+                MSGRAPH_GROUPID_FOR_CMS_LOGIN=$(MsGraph.CmsEditorGroupId) `
+                AZURE_STORAGE_ACCOUNT_BASEURL=$(Storage.BaseUrl) `
+                AZURE_STORAGE_CONTAINER_NAME=$(Storage.ContainerName) `
+                AZURE_LOG_LEVEL=$(Azure.LogLevel) `
+                NEXT_PUBLIC_SERVER_URL=$(Application.Host) `
+                APPLICATIONINSIGHTS_CONNECTION_STRING=$appiConnectionString `
+                IMAGESHOPAPIKEY=secretref:imageshop-api-key `
+                NEXT_PUBLIC_APPLICATIONINSIGHTS_CONNECTION_STRING=$appiConnectionString
+
+                if ($LASTEXITCODE -ne 0) {
+                  Write-Error "Error occurred during az rest command."
+                  exit $LASTEXITCODE
+                }
+
+                Write-Host "Environment variables updated"
+                (az containerapp show --resource-group ${{ parameters.containerResourceGroupName }} --name ${{ parameters.containerAppName }} | convertfrom-json).properties.provisioningState
+                (az containerapp show --resource-group ${{ parameters.containerResourceGroupName }} --name ${{ parameters.containerAppName }} | convertfrom-json).properties.runningstatus
+                start-sleep 20
+                (az containerapp show --resource-group ${{ parameters.containerResourceGroupName }} --name ${{ parameters.containerAppName }} | convertfrom-json).properties.provisioningState
+                (az containerapp show --resource-group ${{ parameters.containerResourceGroupName }} --name ${{ parameters.containerAppName }} | convertfrom-json).properties.runningstatus
+
+                Write-Host "Checking latest revision status"
+                $activeRevisions = az containerapp revision list --resource-group ${{ parameters.containerResourceGroupName }} --name ${{ parameters.containerAppName }} | ConvertFrom-Json
+                $latestRevision = $activeRevisions | Sort-Object { [datetime]$_.properties.createdTime } -Descending | Select-Object -First 1
+                $latestRevision | Format-List
+                if ($latestRevision.properties.provisioningState -eq 'Failed') {
+                    Write-Host "Provisioning state of the latest revision is: Failed"
+                    exit 1
+                } else {
+                    Write-Host "Provisioning state of the latest revision is: $($latestRevision.properties.provisioningState)"
+                }

@@ -1,0 +1,59 @@
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      # This way if potential changes are made to the package's source code but version is not updated, the pipeline will not trigger.
+      - templates/PartnerPortalFramework.Templates.csproj
+pool:
+  vmImage: ubuntu-latest
+
+resources:
+  - repo: self
+
+variables:
+  tag: "$(Build.BuildId)"
+  DevOpsOrganization: 'https://dev.azure.com/if-it/'
+  DevOpsProject: 'Partner Portal Framework'
+
+
+stages:
+  - stage: TestTemplates
+    displayName: 'Verify Demo templates'
+    jobs: 
+      - template: deploy-template-job.yaml
+        parameters:
+          templateName: 'if-ppf-templates-01'
+          jobName: 'Template001'
+      - template: deploy-template-job.yaml
+        parameters:
+          templateName: 'if-ppf-templates-03'
+          jobName: 'Template003'
+          dependsOnJob: 'Template001'
+
+  - stage: Publish
+    displayName: Publish packages
+    dependsOn: TestTemplates
+    jobs:
+      - job: Publish
+        displayName: 'Create And Publish Templates'
+        steps:
+          - task: NuGetAuthenticate@1
+            displayName: 'NuGet Authenticate'
+            inputs:
+              forceReinstallCredentialProvider: true
+
+          - task: DotNetCoreCLI@2
+            displayName: Create nuget package
+            inputs:
+              command: pack
+              packagesToPack: '**/PartnerPortalFramework.Templates.csproj'
+              packDestination: '$(Build.ArtifactStagingDirectory)'
+
+          - task: NuGetCommand@2
+            displayName: 'NuGet push'
+            inputs:
+              command: push
+              publishVstsFeed: '63db51cc-38a6-4c91-8d19-7582890e5f0d/58920250-6d75-454f-834c-501d142ade1b'
+              allowPackageConflicts: false

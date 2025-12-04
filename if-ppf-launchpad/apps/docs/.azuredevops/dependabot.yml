@@ -1,0 +1,36 @@
+# # Feel free to alter this file to your liking when using the template.
+# # It allows to keep dependencies up to date using Dependabot.
+# #
+# # If you use Dependabot-Preview can you easly switch to Dependabot, by logging into the dashboard at
+# # https://dependabot.com and click the "Create config file" button of your repository.
+# # The bot should make a Pull request with the config file that you then can modify if you want.
+# #
+# # You can find more info about the file-format here:
+# # https://help.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
+
+# version: 2
+# updates:
+#   - package-ecosystem: "pip" # See documentation for possible values
+#     directory: "/" # Location of package manifests
+#     schedule:
+#       interval: "daily"
+#     labels:
+#     - 'Type: Update (Dependency)'
+#     - 'Target: Python (pip)'
+#   - package-ecosystem: "github-actions"
+#     directory: "/" # Location of package manifests
+#     schedule:
+#       interval: "daily"
+#     labels:
+#     - 'Type: Update (Dependency)'
+#     - 'Target: GitHub Actions'
+
+
+# TODO: https://marketplace.visualstudio.com/items?itemName=tingle-software.dependabot
+
+## Dependabot
+# The repository contains a `dependabot.yml` file inside the `.github` folder which allows automatic updates through GitHub's Dependabot.  
+# It is configured to target both Python dependencies (inside the `requirements.txt`) and GitHub Actions dependencies, to make sure bot are updated accordingly.
+
+# Note that it is configured by default to add the `Type: Update (Dependency)` label and also the `Target: Python (pip)` label for Python and `Target: GitHub Actions` label for GitHub Actions Dependencies.  
+# Those labels don't exist by default so you have to either create them, or alter the ones in the dependabot.yml (You can also just remove the `labels` sections).

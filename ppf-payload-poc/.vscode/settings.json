@@ -1,0 +1,12 @@
+{
+  "search.exclude": {
+    "**/.yarn": true,
+    "**/.pnp.*": true
+  },
+  "typescript.tsdk": "node_modules\\typescript\\lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "editor.defaultFormatter": "vscode.typescript-language-features",
+  "[bicep]": {
+    "editor.defaultFormatter": "ms-azuretools.vscode-bicep"
+  }
+}

@@ -1,0 +1,28 @@
+fragment ContentBlock on ContentBlock {
+    id
+    blockType
+    blockName
+    columns {
+        id
+        size
+        richText(depth: 1)
+        enableLink
+        link {
+            url
+            label
+            reference {
+                relationTo
+                value {
+                    ... on Page {
+                        __typename
+                        id
+                        slug
+                    }
+                }
+            }
+            appearance
+            type
+            newTab
+        }
+    }
+}

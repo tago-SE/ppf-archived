@@ -1,0 +1,143 @@
+trigger:
+  branches:
+    include:
+      - '*'
+  paths:
+    include:
+      - apps/payload/*
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  shouldDeployDevApi: false 
+  shouldDeployTestApi: false 
+  shouldDeployProdApi: false 
+  isMainBranch: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
+  shouldDeployToTest: $[and(ne(variables['Build.Reason'], 'PullRequest'), eq(variables.isMainBranch, true))]
+  buildTag: '$(Build.BuildId)'
+  serviceConnectionTest: 'AISPPAT Partner Portal Framework Test'
+  projectSolutionDir:  'apps/payload'
+  dockerfilePath: '$(Build.SourcesDirectory)/$(projectSolutionDir)/Dockerfile'
+  dockerTag: '$(Build.BuildId)'
+  azureCliApiVersion: '2023-05-01'
+  ppfTestSubscriptionId: 'cb50914a-3bbb-4e4a-ae52-9ef078ec2fab'
+  ppfProdSubscriptionId: '394c5ffc-bb30-4199-80b4-454ce4510dba'
+  serviceMsGraphIdentityResourceId: '/subscriptions/394c5ffc-bb30-4199-80b4-454ce4510dba/resourcegroups/partner-managed-identities-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ppf-plcms-msgraph-id'
+
+stages:
+  - stage: Dev
+    displayName: Dev Environment
+    variables: 
+      - group: ppf-payloadcms-app-dev-library
+    jobs:
+      - template: deploy-template-pipeline.yml
+        parameters:
+          deployedEnvironment: 'dev'
+          dockerTag: '$(dockerTag)'
+          dockerfilePath: '$(dockerfilePath)'
+          containerRegistryName: 'ppfpayloadcmsdevcr'
+          variableGroupName: ppf-payloadcms-app-dev-library
+          serviceConnectionName: '$(serviceConnectionTest)'
+          azureCliApiVersion: '$(azureCliApiVersion)'
+          containerImageName: 'payloadcms-dev'
+          environmentName: 'If-PPF-Partners-Dev' 
+          containerSubscriptionId: '$(ppfTestSubscriptionId)'
+          containerResourceGroupName: '$(Infrastructure.AppHandle)-rg'
+          appInsightsName: '$(Infrastructure.AppHandle)-appi'
+          containerAppName: '$(Infrastructure.AppHandle)-ca'
+          containerIdentityName: '$(Infrastructure.AppHandle)-ca-id'
+          dbIdentityName: 'ppf-payloadcms-dev-psql-id'
+          # TODO: Change this to be 'dbIdentityName'
+          # Requires working script SQL scripts to manage permissions
+          dbUserName: 'GA_AISPPAT_SQL_Admins_Test'
+          dbHost: 'ppf-payloadcms-dev-psql.postgres.database.azure.com'
+          containerRegistryIdentityName: 'ppf-payloadcms-dev-cr-id'
+          commonResourceGroupName: 'ppf-payloadcms-common-dev-rg'
+          serviceMsGraphIdentityResourceId: '$(serviceMsGraphIdentityResourceId)'
+
+  - stage: DeployDevApi
+    displayName: Deploy Dev API
+    dependsOn: Dev
+    condition: and(ne(failed(), 'true'), ne(canceled(), 'true'), eq(variables.shouldDeployDevApi, 'true'))
+    variables: 
+      - group: ppf-payloadcms-app-dev-library
+    pool:
+      vmImage: windows-latest
+    jobs:
+      - job: DeployDevApi
+        steps:
+        - task: TeamDeployTask@3
+          displayName: 'Deploy Dev API'
+          env:
+            SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+          inputs:
+            ConnectedServiceName: 'AISPPAT Partner Portal Framework Test'
+            project_version_id: '021a7e8e-07f7-49de-8886-5e70cc087882'
+            openapienvironment: 'ProdStage'
+            strictspectralvalidation: 'DoNotUseSpectralValidation'
+            openapiswaggerlocationpath: 'UseOpenApiUrl'
+            openapiswaggerlocationurlpath: '$(Application.Host)/api/openapi.json'
+            healthcheckendpointstage: '$(Application.Host)/api/healthcheck'
+            testenvironmentsuffix: 'dev'
+            usecustompolicies: 'UsePoliciesNo'
+            useappinsights: 'UseAppInsightsNo'
+            openapi_verificationaudienceclaim: '0396d7fe-1260-4ea8-aa54-123898a06e12'
+            
+  - stage: Test
+    displayName: Test Environment
+    dependsOn: Dev
+    condition: and(ne(failed(), 'true'), ne(canceled(), 'true'), eq(variables.shouldDeployToTest, 'true'))
+    variables: 
+      - group: ppf-payloadcms-app-test-library
+    jobs:
+      - template: deploy-template-pipeline.yml
+        parameters:
+          deployedEnvironment: 'test'
+          dockerTag: '$(dockerTag)'
+          dockerfilePath: '$(dockerfilePath)'
+          containerRegistryName: 'ppfpayloadcmstestcr'
+          variableGroupName: ppf-payloadcms-app-test-library
+          serviceConnectionName: '$(serviceConnectionTest)'
+          azureCliApiVersion: '$(azureCliApiVersion)'
+          containerImageName: 'payloadcms-test'
+          environmentName: 'If-PPF-Partners-Test' 
+          containerSubscriptionId: '$(ppfTestSubscriptionId)'
+          containerResourceGroupName: '$(Infrastructure.AppHandle)-rg'
+          appInsightsName: '$(Infrastructure.AppHandle)-appi'
+          containerAppName: '$(Infrastructure.AppHandle)-ca'
+          containerIdentityName: '$(Infrastructure.AppHandle)-ca-id'
+          dbIdentityName: 'ppf-payloadcms-test-psql-id'
+          dbUserName: 'GA_AISPPAT_SQL_Admins_Test'
+          dbHost: 'ppf-payloadcms-test-psql.postgres.database.azure.com'
+          containerRegistryIdentityName: 'ppf-payloadcms-test-cr-id'
+          commonResourceGroupName: 'ppf-payloadcms-common-test-rg'
+          serviceMsGraphIdentityResourceId: '$(serviceMsGraphIdentityResourceId)'
+
+  - stage: DeployTestApi
+    displayName: Deploy Test API
+    dependsOn: Test
+    condition: and(ne(failed(), 'true'), ne(canceled(), 'true'), eq(variables.shouldDeployToTest, 'true'), eq(variables.shouldDeployTestApi, 'true'))
+    variables: 
+      - group: ppf-payloadcms-app-test-library
+    pool:
+      vmImage: windows-latest
+    jobs:
+      - job: DeployTestApi
+        steps:
+        - task: TeamDeployTask@3
+          displayName: 'Deploy Test API'
+          env:
+            SYSTEM_ACCESSTOKEN: $(System.AccessToken)
+          inputs:
+            ConnectedServiceName: 'AISPPAT Partner Portal Framework Test'
+            project_version_id: '021a7e8e-07f7-49de-8886-5e70cc087882'
+            openapienvironment: 'ProdStage'
+            strictspectralvalidation: 'DoNotUseSpectralValidation'
+            openapiswaggerlocationpath: 'UseOpenApiUrl'
+            openapiswaggerlocationurlpath: '$(Application.Host)/api/openapi.json'
+            healthcheckendpointstage: '$(Application.Host)/api/healthcheck'
+            testenvironmentsuffix: 'test'
+            usecustompolicies: 'UsePoliciesNo'
+            useappinsights: 'UseAppInsightsNo'
+            openapi_verificationaudienceclaim: '0396d7fe-1260-4ea8-aa54-123898a06e12'

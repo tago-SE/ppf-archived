@@ -1,0 +1,116 @@
+trigger:
+  branches:
+    include:
+      - '*'
+  paths:
+    include:
+      - apps/dotnet/*
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  isMainBranch: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
+  shouldDeployToTest: $[and(ne(variables['Build.Reason'], 'PullRequest'), eq(variables.isMainBranch, true))]
+  dockerTag: '$(Build.BuildId)'
+  containerRegistryName: 'ifppfprodcr'
+  dockerfilePath: '$(Build.SourcesDirectory)/apps/dotnet/dotnet.Server/Dockerfile'
+  serviceConnectionTest: 'AISPPAT Partner Portal Framework Test'
+  azureCliApiVersion: '2023-05-01'
+  ppfTestSubscriptionId: 'cb50914a-3bbb-4e4a-ae52-9ef078ec2fab'
+  environmentNameDev: 'If-PPF-Partners-Dev'
+  environmentNameTest: 'If-PPF-Partners-Test'
+  dotnetImageName: 'payload-dnet'
+  nextjsImageName: 'payload-nextjsdemo'
+
+stages:
+  - stage: Dev
+    displayName: Deploy Tenant-1 to Dev
+    variables: 
+      - group: ppf-portal-dnetdemo-dev-library
+    jobs:
+      - template: deploy-template-pipeline.yml
+        parameters:
+          dockerTag: '$(dockerTag)'
+          dockerfilePath: '$(dockerfilePath)'
+          containerRegistryName: '$(containerRegistryName)'
+          variableGroupName: ppf-portal-dnetdemo-dev-library
+          serviceConnectionName: '$(serviceConnectionTest)' 
+          azureCliApiVersion: '$(azureCliApiVersion)'
+          containerImageName: '$(dotnetImageName)-dev'
+          environmentName: '$(environmentNameDev)'
+          containerSubscriptionId: '$(ppfTestSubscriptionId)'
+          containerResourceGroupName: '$(Infrastructure.AppHandle)-rg'
+          appInsightsName: '$(Infrastructure.AppHandle)-appi'
+          containerAppName: '$(Infrastructure.AppHandle)-ca'
+          containerIdentityName: '$(Infrastructure.AppHandle)-ca-id'
+          containerRegistryIdentityName: '$(Infrastructure.AppHandle)-cr-id'
+
+  - stage: Dev_Tenant2
+    displayName: Deploy Tenant-2 to Dev
+    variables: 
+      - group: ppf-portal-nextjsdemo-dev-library
+    jobs:
+      - template: deploy-template-pipeline.yml
+        parameters:
+          dockerTag: '$(dockerTag)'
+          dockerfilePath: '$(dockerfilePath)'
+          containerRegistryName: '$(containerRegistryName)'
+          variableGroupName: ppf-portal-nextjsdemo-dev-library
+          serviceConnectionName: '$(serviceConnectionTest)'
+          azureCliApiVersion: '$(azureCliApiVersion)'
+          containerImageName: '$(nextjsImageName)-dev'
+          environmentName: '$(environmentNameDev)'
+          containerSubscriptionId: '$(ppfTestSubscriptionId)'
+          containerResourceGroupName: '$(Infrastructure.AppHandle)-rg'
+          appInsightsName: '$(Infrastructure.AppHandle)-appi'
+          containerAppName: '$(Infrastructure.AppHandle)-ca'
+          containerIdentityName: '$(Infrastructure.AppHandle)-ca-id'
+          containerRegistryIdentityName: '$(Infrastructure.AppHandle)-cr-id'
+
+  - stage: Test
+    displayName: Deploy Tenant-1 to Test
+    dependsOn: Dev
+    condition: and(ne(failed(), 'true'), ne(canceled(), 'true'), eq(variables.shouldDeployToTest, 'true'))
+    variables: 
+      - group: ppf-portal-dnetdemo-test-library
+    jobs:
+      - template: deploy-template-pipeline.yml
+        parameters:
+          dockerTag: '$(dockerTag)'
+          dockerfilePath: '$(dockerfilePath)'
+          containerRegistryName: '$(containerRegistryName)'
+          variableGroupName: ppf-portal-dnetdemo-test-library
+          serviceConnectionName: '$(serviceConnectionTest)'
+          azureCliApiVersion: '$(azureCliApiVersion)'
+          containerImageName: '$(dotnetImageName)-test'
+          environmentName: '$(environmentNameTest)'
+          containerSubscriptionId: '$(ppfTestSubscriptionId)'
+          containerResourceGroupName: '$(Infrastructure.AppHandle)-rg'
+          appInsightsName: '$(Infrastructure.AppHandle)-appi'
+          containerAppName: '$(Infrastructure.AppHandle)-ca'
+          containerIdentityName: '$(Infrastructure.AppHandle)-ca-id'
+          containerRegistryIdentityName: '$(Infrastructure.AppHandle)-cr-id'
+
+  - stage: Test_Tenant2
+    displayName: Deploy Tenant-2 to Test
+    condition: and(ne(failed(), 'true'), ne(canceled(), 'true'), eq(variables.shouldDeployToTest, 'true'))
+    dependsOn: Dev_Tenant2
+    variables: 
+      - group: ppf-portal-nextjsdemo-test-library
+    jobs:
+      - template: deploy-template-pipeline.yml
+        parameters:
+          dockerTag: '$(dockerTag)'
+          dockerfilePath: '$(dockerfilePath)'
+          containerRegistryName: '$(containerRegistryName)'
+          variableGroupName: ppf-portal-nextjsdemo-test-library
+          serviceConnectionName: '$(serviceConnectionTest)'
+          azureCliApiVersion: '$(azureCliApiVersion)'
+          containerImageName: '$(nextjsImageName)-test'
+          environmentName: '$(environmentNameTest)'
+          containerSubscriptionId: '$(ppfTestSubscriptionId)'
+          containerResourceGroupName: '$(Infrastructure.AppHandle)-rg'
+          appInsightsName: '$(Infrastructure.AppHandle)-appi'
+          containerAppName: '$(Infrastructure.AppHandle)-ca'
+          containerIdentityName: '$(Infrastructure.AppHandle)-ca-id'
+          containerRegistryIdentityName: '$(Infrastructure.AppHandle)-cr-id'

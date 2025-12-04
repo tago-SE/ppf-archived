@@ -1,0 +1,30 @@
+using Azure.Identity;
+
+namespace <%=it.namespace%>;
+
+public static class KeyVaultConfigurationExtensions
+{
+	public static WebApplicationBuilder ConfigureKeyVault(this WebApplicationBuilder builder)
+	{
+		var keyVaultSection = builder.Configuration.GetSection(KeyVaultOptions.SectionName);
+		builder.Services.Configure<KeyVaultOptions>(keyVaultSection);
+		var keyVaultOptions = keyVaultSection.Get<KeyVaultOptions>();
+
+		var keyVaultUrl = new Uri(keyVaultOptions.Url);
+
+		if (string.IsNullOrEmpty(keyVaultOptions.ClientId))
+		{
+			builder.Configuration.AddAzureKeyVault(keyVaultUrl, new DefaultAzureCredential());
+		}
+		else
+		{
+			builder.Configuration.AddAzureKeyVault(keyVaultUrl,
+				new DefaultAzureCredential(new DefaultAzureCredentialOptions()
+				{
+					ManagedIdentityClientId = keyVaultOptions.ClientId
+				}));
+		}
+
+		return builder;
+	}
+}

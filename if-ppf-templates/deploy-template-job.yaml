@@ -1,0 +1,54 @@
+parameters:
+- name: templateName
+  type: string
+  displayName: 'Template Name'
+
+- name: jobName
+  type: string
+  displayName: 'Job name'
+
+- name: dependsOnJob
+  type: string
+  default: ''
+  displayName: 'Depends On Job (Optional)'
+
+jobs:
+- job: '${{parameters.jobName}}'
+  displayName: 'Deploy ${{parameters.templateName}}'
+  dependsOn: ${{ parameters.dependsOnJob }}
+  steps:
+  - script: |
+      az devops configure --defaults organization=$(DevOpsOrganization) project="$(DevOpsProject)"
+    displayName: 'Set default Azure DevOps organization and project'
+  - script: |
+      run_output=$(az pipelines run --debug --branch $(Build.SourceBranch) --name "${{parameters.templateName}}")
+
+      run_id=$(echo "$run_output" | jq -r '.id')
+
+      # Check if run_id is valid
+      if [ -z "$run_id" ]; then
+          echo "Error: Failed to retrieve the pipeline run ID. Exiting..."
+          exit 1
+      fi
+
+      echo "Pipeline run for ${{parameters.templateName}} has started. Waiting for completion..."
+
+      while true; do
+        status=$(az pipelines runs show --id "$run_id" --org "$(DevOpsOrganization)" --project "$(DevOpsProject)" --query status -o tsv)
+        if [ "$status" == "completed" ]; then
+            echo "Pipeline run for ${{parameters.templateName}} has completed successfully."
+            break
+        elif [ "$status" == "inProgress" ]; then
+            echo "Pipeline run for ${{parameters.templateName}} is still in progress. Waiting..."
+        elif [ "$status" == "notStarted" ]; then
+            echo "Pipeline run for ${{parameters.templateName}} has not yet started. Waiting..."
+        else
+            echo "Error: Pipeline run for ${{parameters.templateName}} failed or encountered an unknown status: $status"
+            exit 1
+        fi
+        sleep 10  # Adjust the interval as needed
+      done
+
+    displayName: 'Run pipeline to deploy ${{parameters.templateName}}'
+    env:
+      AZURE_DEVOPS_EXT_PAT: $(System.AccessToken)

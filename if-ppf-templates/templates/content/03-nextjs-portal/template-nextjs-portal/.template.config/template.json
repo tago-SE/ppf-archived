@@ -1,0 +1,14 @@
+{
+    "$schema": "http://json.schemastore.org/template",
+    "author": "Lego Squad",
+    "classifications": [ "PPF", "Web", "Next.js", "React", "Fullstack" ], 
+    "name": "PPF Next.js Fullstack",
+    "identity": "03-nextjs-portal",         
+    "shortName": "ppf-nextjs-portal",                 
+    "tags": {
+      "language": "typescript",                  
+      "type":"project"
+    },
+    "sourceName": "template-nextjs-portal",           
+    "preferNameDirectory":true
+  }

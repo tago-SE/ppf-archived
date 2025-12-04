@@ -1,0 +1,7 @@
+#import "./layoutFragment.graphql"
+
+fragment DocumentationPageDetails on DocumentationPage {
+    layout {
+        ...Layout
+    }
+} 

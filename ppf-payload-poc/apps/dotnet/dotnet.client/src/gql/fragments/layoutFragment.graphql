@@ -1,0 +1,20 @@
+#import "./codeBlockFragment.graphql"
+#import "./contentBlockFragment.graphql"
+#import "./mediaBlockFragment.graphql"
+
+fragment Layout on Page_Layout  {
+    useLinkedBlock
+    linkedBlock {
+        id
+        content {
+            ...ContentBlock
+            ...CodeBlock
+            ...MediaBlock
+        }
+    }
+    customBlocks {
+        ...ContentBlock
+        ...CodeBlock
+        ...MediaBlock
+    }                
+}

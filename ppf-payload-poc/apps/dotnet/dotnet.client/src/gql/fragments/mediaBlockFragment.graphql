@@ -1,0 +1,10 @@
+#import "./mediaFragment.graphql"
+
+fragment MediaBlock on MediaBlock {
+    id
+    blockType
+    blockName
+    media {
+        ...Media
+    }
+}

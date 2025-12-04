@@ -1,0 +1,7 @@
+fragment CodeBlock on CodeBlock {
+    id
+    blockType
+    blockName
+    language
+    code
+}

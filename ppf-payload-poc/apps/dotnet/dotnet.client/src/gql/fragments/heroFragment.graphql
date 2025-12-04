@@ -1,0 +1,28 @@
+#import "./mediaFragment.graphql"
+
+fragment Hero on Page_Hero {
+    type
+    richText(depth: 1)
+    media {
+        ...Media
+    }
+    links {
+        id
+        link {
+            type
+            newTab
+            url
+            label
+            reference {
+                relationTo
+                value {
+                    ... on Page {
+                        __typename
+                        id
+                        slug
+                    }
+                }
+            }   
+        }       
+    }
+} 

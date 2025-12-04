@@ -1,0 +1,41 @@
+# docker-compose up --build
+services:
+  db:
+    container_name: postgres
+    image: postgres:latest
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      # We share the folder `data-db` in our root repository, with the default PostgreSQL data path
+      # It means that every time the repository is modifying the data inside
+      # of `/var/lib/postgresql/data/`, automatically the change will appear in `data-db`
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+
+  tests:
+    container_name: tests
+    depends_on:
+      db:
+        condition: service_healthy
+    build:
+      context: .
+      dockerfile: ./Dockerfile.test
+    env_file:
+      - path: ./.env.test
+        required: true
+    environment:
+      DATABASE_URI: "postgres://postgres:postgres@db:5432/payload_db?sslmode=disable"
+      TEST_AZ_DEVELOPER_ACCESS_TOKEN: ${TEST_AZ_DEVELOPER_ACCESS_TOKEN}
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

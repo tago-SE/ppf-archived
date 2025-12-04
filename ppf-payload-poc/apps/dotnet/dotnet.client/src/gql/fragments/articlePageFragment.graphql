@@ -1,0 +1,16 @@
+#import "./layoutFragment.graphql"
+#import "./relatedFragment.graphql"
+
+fragment ArticlePageDetails on ArticlePage {
+    layout {
+        ...Layout
+    }
+    related {
+        ...Related
+    }
+    publishedAt
+    populatedAuthors {
+        id
+        name
+    }
+} 

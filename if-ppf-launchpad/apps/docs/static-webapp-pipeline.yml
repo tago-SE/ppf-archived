@@ -1,0 +1,62 @@
+name: Azure Static Web Apps CI/CD
+
+pr:
+  branches:
+    include:
+      - main
+trigger:
+  branches:
+    include:
+      - main
+  paths:
+    include:
+      - apps/docs/*
+
+variables: 
+  # Should be set to where mkdocs.yml is located
+  projectSolutionDir:  'apps/docs'
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  - stage: Dev 
+    displayName: 'Deploy Dev Environment'
+    variables:
+      webapp_rg: 'if-ppf-launchpad-test'
+      webapp_name: 'static-docs-site-test'
+      azureSubscription: 'AISPPAT Partner Portal Framework Test'
+    jobs:  
+    - job: build_and_deploy_job
+      displayName: Build and Deploy Job
+      condition: or(eq(variables['Build.Reason'], 'Manual'),or(eq(variables['Build.Reason'], 'PullRequest'),eq(variables['Build.Reason'], 'IndividualCI')))
+      steps:
+      - checkout: self
+        submodules: true
+      - task: AzureCLI@2
+        displayName: 'Get ApiKey'
+        inputs:
+          azureSubscription: ${{ variables.azureSubscription }}
+          scriptType: "pscore"
+          scriptLocation: "inlineScript"
+          failOnStandardError: false
+          inlineScript: |
+              [string] $APIKEY = (az staticwebapp secrets list --name "${{ variables.webapp_name }}" --resource-group "${{ variables.webapp_rg }}" | convertfrom-json).properties.apiKey
+              Write-Host "##vso[task.setvariable variable=apiKey;issecret=true]$APIKEY"
+      - bash: |
+            echo "PROJECT_SOLUTION_DIR: $(projectSolutionDir)"
+            cd $(projectSolutionDir)
+            pip install -r requirements.txt
+            mkdocs build -d ./site
+        displayName: 'Build Site'
+      - task: AzureStaticWebApp@0
+        inputs:
+          skip_api_build: true
+          azure_static_web_apps_api_token: $(apiKey)
+          cwd: $(projectSolutionDir)
+    ###### Repository/Build Configurations - These values can be configured to match your app requirements. ######
+    # For more information regarding Static Web App workflow configurations, please visit: https://aka.ms/swaworkflowconfig
+          app_location: "/site" # App source code path
+          output_location: "/" # Built app content directory - optional
+          config_file_location: /
+    ###### End of Repository/Build Configurations ######

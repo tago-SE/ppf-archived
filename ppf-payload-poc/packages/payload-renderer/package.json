@@ -1,0 +1,49 @@
+{
+  "name": "@ppf/payload-renderer",
+  "version": "0.0.5",
+  "sideEffects": false,
+  "license": "Unlicense",
+  "publishConfig": {
+    "registry": "https://pkgs.dev.azure.com/if-it/63db51cc-38a6-4c91-8d19-7582890e5f0d/_packaging/ppf-portal-starter/npm/registry/"
+  },
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "import": "./src/index.ts",
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./payload-types": {
+      "import": "./src/payload-types.ts",
+      "types": "./src/payload-types.ts"
+    },
+    "./components": {
+      "import": "./src/components/index.ts",
+      "types": "./src/components/index.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "yarn run build",
+    "packages:bump-version": "yarn version patch --immediate",
+    "packages:publish": "yarn npm publish",
+    "packages:pipeline-publish": "yarn run build && yarn publish --non-interactive"
+  },
+  "dependencies": {
+    "@payloadcms/richtext-lexical": "3.37.0",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tsconfig": "*",
+    "typescript": "^5.6.3"
+  }
+}

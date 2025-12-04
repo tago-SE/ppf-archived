@@ -1,0 +1,18 @@
+query Search($tenantSlug: String!, $term: String!, $locale: LocaleInputType) {
+    SearchByTenant (tenantSlug: $tenantSlug, term: $term, locale: $locale) {
+      docs {
+        id
+        title
+        doc {
+            relationTo
+            value {
+                ... on Page {
+                    __typename
+                    id
+                    slug
+                }
+            }
+        }
+      }
+    }  
+}

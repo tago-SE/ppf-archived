@@ -1,0 +1,79 @@
+[
+    {
+        "name": "Internet Breakout Finland PA",
+        "startaddress": "193.65.7.80",
+        "endaddress": "193.65.7.94",
+        "cidr": "193.65.7.80/28",
+        "rule": "Allow",
+        "priority": 1000,
+        "environment": [
+            "*"
+        ]
+    },
+    {
+        "name": "Deny Finland PA",
+        "startaddress": "193.65.7.90",
+        "endaddress": "193.65.7.90",
+        "cidr": "193.65.7.90/32",
+        "rule": "Deny",
+        "priority": 100,
+        "environment": [
+            "*"
+        ]
+    },
+    {
+        "name": "Internet Breakout Denmark PA",
+        "startaddress": "213.83.166.1",
+        "endaddress": "213.83.166.14",
+        "cidr": "213.83.166.0/28",
+        "rule": "Allow",
+        "priority": 1000,
+        "environment": [
+            "*"
+        ]
+    },
+    {
+        "name": "Deny Denmark PA",
+        "startaddress": "213.83.166.14",
+        "endaddress": "213.83.166.14",
+        "cidr": "213.83.166.14/32",
+        "rule": "Deny",
+        "priority": 100,
+        "environment": [
+            "*"
+        ]
+    },
+    {
+        "name": "Internet Breakout Baltics PA",
+        "startaddress": "195.190.141.1",
+        "endaddress": "195.190.141.254",
+        "cidr": "195.190.141.0/24",
+        "rule": "Allow",
+        "priority": 1000,
+        "environment": [
+            "*"
+        ]
+    },
+    {
+        "name": "Internet Breakout Sweden PA",
+        "startaddress": "62.119.15.80",
+        "endaddress": "62.119.15.95",
+        "cidr": "62.119.15.80/28",
+        "rule": "Allow",
+        "priority": 1000,
+        "environment": [
+            "*"
+        ]
+    },
+    {
+        "name": "Deny Sweden PA",
+        "startaddress": "62.119.15.94",
+        "endaddress": "62.119.15.94",
+        "cidr": "62.119.15.94/32",
+        "rule": "Deny",
+        "priority": 100,
+        "environment": [
+            "*"
+        ]
+    }
+]

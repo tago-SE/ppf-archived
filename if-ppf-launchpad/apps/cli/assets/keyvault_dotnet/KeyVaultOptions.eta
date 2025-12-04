@@ -1,0 +1,12 @@
+namespace <%=it.namespace%>;
+
+public class KeyVaultOptions
+{
+	public const string SectionName = "KeyVault";
+
+	public string Url { get; set; } = string.Empty;
+
+	public string ClientId { get; set; } = string.Empty;
+
+	public string ObjectId { get; set; } = string.Empty;
+}

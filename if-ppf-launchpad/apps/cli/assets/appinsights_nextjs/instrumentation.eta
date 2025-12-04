@@ -1,0 +1,45 @@
+export async function register() {
+  await registerAppInsights();
+}
+
+async function registerAppInsights() {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { AppInsightsServerConfig: appiConfig } = await import(
+      "@/lib/appinsights/serverConfig"
+    );
+    if (!appiConfig.connectionString) {
+      console.warn(`AppInsights.connectionString missing.`);
+      return;
+    }  
+    const appInsights = await import("applicationinsights");
+    appInsights
+      .setup(appiConfig.connectionString)
+      .setAutoCollectConsole(
+        appiConfig.autoCollectConsole,
+        appiConfig.autoCollectConsoleLog
+      )
+      .setAutoCollectExceptions(appiConfig.autoCollectExceptions)
+      .setAutoCollectPerformance(
+        appiConfig.autoCollectPerformance,
+        appiConfig.autoCollectPerformanceExtendedMetrics
+      )
+      .setInternalLogging(
+        appiConfig.internalDebugLogging,
+        appiConfig.internalWarningLogging
+      )
+      .setAutoCollectPreAggregatedMetrics(
+        appiConfig.autoCollectPreAggregatedMetrics
+      )
+      .setAutoCollectRequests(appiConfig.autoCollectRequests)
+      .setAutoCollectHeartbeat(appiConfig.autoCollectHeartbeat)
+      .setAutoDependencyCorrelation(appiConfig.autoDependencyCorrelation)
+      .setAutoCollectDependencies(appiConfig.autoCollectDependencies)
+      .enableWebInstrumentation(appiConfig.enableWebInstrumentation, undefined)
+      .setSendLiveMetrics(appiConfig.sendLiveMetrics);
+
+    appInsights.defaultClient.config.samplingPercentage =
+      appiConfig.samplingPercentage;
+
+    appInsights.start();
+  }
+}

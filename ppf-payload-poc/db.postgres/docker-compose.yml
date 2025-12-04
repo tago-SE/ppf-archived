@@ -1,0 +1,41 @@
+services:
+  db:
+    container_name: postgres_ca_payload
+    image: postgres:latest
+    restart: always
+    ports:
+      - "5432:5432"
+    networks:
+      - postgres-network
+    env_file:
+      - path: ./.env
+        required: true
+    volumes:
+      # In this example, we share the folder `data-db` in our root repository, with the default PostgreSQL data path
+      # It means that every time the repository is modifying the data inside
+      # of `/var/lib/postgresql/data/`, automatically the change will appear in `data-db`
+      # this way we can persist the data locally
+      - ./data-db:/var/lib/postgresql/data
+      # The first time the server starts it will import and execute files inside /docker-entrypoint-initb.d
+      # # copy the sql script to create tables
+      # - ./sql/create_tables.sql:/docker-entrypoint-initdb.d/create_tables.sql
+      # # copy the sql script to fill tables
+      # - ./sql/fill_tables.sql:/docker-entrypoint-initdb.d/fill_tables.sql
+  
+  pgadmin:
+    container_name: pgadmin_ca_payload
+    image: dpage/pgadmin4
+    restart: always
+    ports:
+      - "5050:80"
+    networks:
+      - postgres-network
+    env_file:
+      - path: ./.env
+        required: true
+    volumes:
+      - ./data-pgadmin/:/var/lib/pgadmin/
+
+networks: 
+  postgres-network:
+    driver: bridge

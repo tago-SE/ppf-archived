@@ -1,0 +1,11 @@
+#import "./layoutFragment.graphql"
+#import "./heroFragment.graphql"
+
+fragment LandingPageDetails on LandingPage {
+    hero {
+        ...Hero
+    }
+    layout {
+        ...Layout
+    }
+} 

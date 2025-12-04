@@ -1,0 +1,51 @@
+import {
+    ChainedTokenCredential,
+    DefaultAzureCredential,
+    ManagedIdentityCredential,
+    VisualStudioCodeCredential,
+  } from "@azure/identity";
+<% if (it.secretClient) { %>
+import { SecretClient } from "@azure/keyvault-secrets";
+<% } %>
+<% if (it.certClient) { %>
+import { CertificateClient } from "@azure/keyvault-certificates";
+<% } %>
+<% if (it.keyClient) { %>
+import { KeyClient } from "@azure/keyvault-keys";
+<% } %>
+import { env } from "next-runtime-env";
+  
+const KEY_VAULT_CLIENTID = env("KEY_VAULT_CLIENTID");
+const KEY_VAULT_URL = env("KEY_VAULT_URL")!;
+/**
+ * Function to get the appropriate credentials based on the environment. When KEY_VAULT_CLIENTID is set it will use ManagedIdentity,
+ * or fallback to DefaultTokenCredentials which is more suitable for local development.
+ */
+function getCredential(): ChainedTokenCredential | ManagedIdentityCredential {
+  if (!!KEY_VAULT_CLIENTID) {
+    return new ManagedIdentityCredential({ clientId: KEY_VAULT_CLIENTID });
+  } else {
+    return new ChainedTokenCredential(
+      new VisualStudioCodeCredential(),
+      new DefaultAzureCredential()
+    );
+  }
+}
+
+const credential = getCredential();
+
+<% if (it.secretClient) { %>
+const secretClient = new SecretClient(KEY_VAULT_URL, credential);
+export { secretClient };
+<% } %>
+
+<% if (it.certClient) { %>
+const certificateClient = new CertificateClient(KEY_VAULT_URL, credential);
+export { certificateClient }  
+<% } %>
+
+<% if (it.keyClient) { %>
+const keyClient = new KeyClient(KEY_VAULT_URL, credential);
+export { keyClient }
+<% } %>
+  

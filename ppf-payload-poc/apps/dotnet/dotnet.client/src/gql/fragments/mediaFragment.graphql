@@ -1,0 +1,10 @@
+fragment Media on Media {
+    id
+    mediaSource
+    externalUrl
+    alt
+    caption
+    url
+    thumbnailURL
+    mimeType
+}

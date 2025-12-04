@@ -1,0 +1,57 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "env": {
+      "value": "test"
+    },
+    "location": {
+      "value": "westeurope"
+    },
+    "appPrefix": {
+      "value": "ppf-payloadcms-app"
+    },
+    "containerImage": {
+      "value": "mcr.microsoft.com/k8se/quickstart:latest"
+    },
+    "secretsJson": {
+      "value": ""
+    },
+    "envVariablesJson": {
+      "value": ""
+    },
+    "certificateId": {
+      "value": ""
+    },
+    "serviceMsGraphIdentityResourceId": {
+      "value": "/subscriptions/394c5ffc-bb30-4199-80b4-454ce4510dba/resourcegroups/partner-managed-identities-rg/providers/Microsoft.ManagedIdentity/userAssignedIdentities/ppf-plcms-msgraph-id"
+    },
+    "commonResourceGroupName": {
+      "value": "ppf-payloadcms-common-test-rg"
+    },
+    "containerEnvironmentName": {
+      "value": "ppf-payloadcms-test-cae"
+    },
+    "storageName": {
+      "value": "ppfpayloadcmstestst"
+    },
+    "registryName": {
+      "value": "ppfpayloadcmstestcr"
+    },
+    "registryIdentityName": {
+      "value": "ppf-payloadcms-test-cr-id"
+    },
+    "dbIdentityName": {
+      "value": "ppf-payloadcms-test-psql-id"
+    },
+    "natGatewayPublicIPAddressName": {
+      "value": "ppf-payloadcms-test-pip"
+    },
+    "logWorkspaceName": {
+      "value": "ppf-payloadcms-test-ca-log"
+    },
+    "developerGroupId": {
+      "value": "0260419f-d8ca-4eda-a5fa-04e81875467b"
+    }
+  }
+}

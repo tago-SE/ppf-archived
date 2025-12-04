@@ -1,0 +1,43 @@
+import { Config } from 'payload'
+import {
+  BoldFeature,
+  ItalicFeature,
+  LinkFeature,
+  ParagraphFeature,
+  lexicalEditor,
+  UnderlineFeature,
+} from '@payloadcms/richtext-lexical'
+import { COLLECTION_SLUG_DYANMIC_PAGE } from '@/collections/config'
+
+export const defaultLexical: Config['editor'] = lexicalEditor({
+  features: () => {
+    return [
+      ParagraphFeature(),
+      UnderlineFeature(),
+      BoldFeature(),
+      ItalicFeature(),
+      LinkFeature({
+        enabledCollections: [COLLECTION_SLUG_DYANMIC_PAGE],
+        fields: ({ defaultFields }) => {
+          const defaultFieldsWithoutUrl = defaultFields.filter((field) => {
+            if ('name' in field && field.name === 'url') return false
+            return true
+          })
+
+          return [
+            ...defaultFieldsWithoutUrl,
+            {
+              name: 'url',
+              type: 'text',
+              admin: {
+                condition: ({ linkType }) => linkType !== 'internal',
+              },
+              label: ({ t }) => t('fields:enterURL'),
+              required: true,
+            },
+          ]
+        },
+      }),
+    ]
+  },
+})

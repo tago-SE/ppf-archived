@@ -1,0 +1,14 @@
+{
+    "$schema": "http://json.schemastore.org/template",
+    "author": "Lego Squad",
+    "classifications": [ "PPF", "Web", "SPA", "React", "Fullstack" ], 
+    "name": "PPF ASP.NET Core React Fullstack",
+    "identity": "01-react-aspnetcore-portal",         
+    "shortName": "ppf-portal-react-base",                 
+    "tags": {
+      "language": "C#",                  
+      "type":"project"
+    },
+    "sourceName": "WebPortal",           
+    "preferNameDirectory":true
+  }

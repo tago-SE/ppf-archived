@@ -1,0 +1,49 @@
+{
+  "name": "@ppf/ppf",
+  "version": "1.0.29",
+  "packageManager": "yarn@4.4.1",
+  "type": "module",
+  "bin": "./dist/index.mjs",
+  "files": [
+    "dist/**/*"
+  ],
+  "publishConfig": {
+    "registry": "https://pkgs.dev.azure.com/if-it/63db51cc-38a6-4c91-8d19-7582890e5f0d/_packaging/ppf-portal-starter/npm/registry/"
+  },
+  "devDependencies": {
+    "@types/core-js": "^2.5.8",
+    "@types/node": "^22.5.1",
+    "core-js": "^3.38.1",
+    "pkgroll": "^2.4.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "@inquirer/prompts": "^5.3.8",
+    "@types/uuid": "^10",
+    "acorn": "^8.12.1",
+    "acorn-walk": "^8.3.4",
+    "astring": "^1.9.0",
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "dedent": "^1.5.3",
+    "dot-prop": "^9.0.0",
+    "eta": "^3.5.0",
+    "execa": "^9.3.1",
+    "glob": "^11.0.0",
+    "globify-gitignore": "^1.0.3",
+    "indent-string": "^5.0.0",
+    "merge-anything": "^6.0.2",
+    "recursive-copy": "^2.0.14",
+    "replace-in-file": "^8.1.0",
+    "terminal-link": "^3.0.0",
+    "uuid": "^10.0.0",
+    "yaml": "^2.5.1"
+  },
+  "scripts": {
+    "dev:watch": "tsx watch --clear-screen=false src/index.ts",
+    "dev": "tsx src/index.ts",
+    "build": "pkgroll --env.NODE_ENV=production --minify && tsx src/bundle.ts",
+    "pipeline-publish:packages": "yarn build && yarn npm publish --access restricted"
+  }
+}

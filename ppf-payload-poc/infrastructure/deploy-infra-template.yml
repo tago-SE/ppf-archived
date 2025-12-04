@@ -1,0 +1,73 @@
+parameters:
+- name: subscriptionId
+  type: string
+- name: serviceConnectionName
+  type: string
+- name: location
+  type: string
+- name: cmsFile
+  type: string 
+- name: csmParametersFile
+  type: string
+- name: environmentName
+  type: string
+- name: dependsOnJob 
+  default: ''
+  type: string 
+- name: artifactName
+  type: string 
+  default: ''
+
+jobs:
+- job: ValidateTemplate
+  displayName: Validate Template
+  dependsOn: ${{ parameters.dependsOnJob }}
+  steps:
+  - task: DownloadPipelineArtifact@2
+    displayName: 'DL ${{ parameters.artifactName }}'
+    condition: and(succeeded(), contains('${{ parameters.artifactName }}', ''))
+    inputs:
+      artifact: '${{ parameters.artifactName }}'
+      path: $(Pipeline.Workspace)
+
+  - task: AzureResourceManagerTemplateDeployment@3
+    displayName: 'Validate Template'
+    inputs:
+      deploymentScope: 'Subscription'
+      azureResourceManagerConnection: ${{ parameters.serviceConnectionName }}
+      subscriptionId: ${{ parameters.subscriptionId }}
+      location: ${{ parameters.location }}
+      templateLocation: 'Linked artifact'
+      csmFile: ${{ parameters.cmsFile }}
+      csmParametersFile: ${{ parameters.csmParametersFile }}
+      deploymentMode: 'Validation'
+   
+- deployment: Deploy
+  displayName: Deploy
+  dependsOn: ValidateTemplate
+  condition: succeeded()
+  environment: ${{ parameters.environmentName }}
+  strategy:
+    runOnce:
+      deploy:
+        steps:
+        - checkout: self
+        - task: DownloadPipelineArtifact@2
+          displayName: 'DL ${{ parameters.artifactName }}'
+          condition: and(succeeded(), contains('${{ parameters.artifactName }}', ''))
+          inputs:
+            artifact: '${{ parameters.artifactName }}'
+            path: $(Pipeline.Workspace)
+        - task: AzureResourceManagerTemplateDeployment@3
+          displayName: 'Deploy Template'
+          enabled: true
+          inputs:
+            deploymentScope: 'Subscription'
+            azureResourceManagerConnection: ${{ parameters.serviceConnectionName }}
+            subscriptionId: ${{ parameters.subscriptionId }}
+            location: ${{ parameters.location }}
+            templateLocation: 'Linked artifact'
+            csmFile: ${{ parameters.cmsFile }}
+            csmParametersFile: ${{ parameters.csmParametersFile }}
+            deploymentMode: 'Incremental'
+            deploymentOutputs: 'armOutputs'

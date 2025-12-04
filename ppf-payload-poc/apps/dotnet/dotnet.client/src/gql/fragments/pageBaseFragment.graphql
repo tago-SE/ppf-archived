@@ -1,0 +1,32 @@
+#import "./codeBlockFragment.graphql"
+#import "./contentBlockFragment.graphql"
+#import "./mediaBlockFragment.graphql"
+
+fragment PageBase on PageBaseInterface {
+    id
+    slug
+    title
+    pageTemplate
+    updatedAt
+    categories {
+        id
+        title
+    }
+    tenant {
+        id
+        name
+        slug
+    }
+    breadcrumbs {
+        url
+        doc {
+            id
+            title
+            slug
+        }
+    }
+    meta {
+        title
+        description
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "folders": [
+      {
+        "name": "auth/dotnet/dotnet.client",
+        "path": "../auth/dotnet/dotnet.client"
+      },
+    ],
+    "settings": {
+        "files.exclude": {
+            "node_modules/": true,
+            "packages/": true
+        },
+    }
+}

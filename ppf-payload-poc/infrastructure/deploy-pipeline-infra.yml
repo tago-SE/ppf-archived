@@ -1,0 +1,156 @@
+# NOTE:
+#
+# There is currently a disconnect between deploying Common infrastructure and redeploying the App.
+# For this reason, `shouldDeployCommon` is set to `false` by default to avoid inconsistencies
+# or partial deployments that may cause failures or misconfigurations.
+#
+# Additionally, fetching secrets and variables when redeploying the App independently is not yet
+# implemented. This may cause the redeployed App to lack necessary configuration if dependent
+# secrets/outputs are not manually handled.
+#
+# These issues are known and being tracked for future improvements.
+##
+trigger:
+  branches:
+    include:
+      - main
+
+  paths:
+    include:
+      - infrastructure
+
+pool:
+  vmImage: windows-latest
+
+variables:
+  shouldDeployCommon: false
+  shouldDeployApp: true
+  isMainBranch: $[eq(variables['Build.SourceBranch'], 'refs/heads/main')]
+  shouldDeployToTest: $[and(ne(variables['Build.Reason'], 'PullRequest'), eq(variables.isMainBranch, true))]
+  azureResourceManagerConnection: "AISPPAT Partner Portal Framework Test"
+  ppfTestSubscriptionId: "cb50914a-3bbb-4e4a-ae52-9ef078ec2fab"
+  ppfProdSubscriptionId: "394c5ffc-bb30-4199-80b4-454ce4510dba"
+  location: "westeurope"
+
+stages:
+  - stage: DevCommon
+    displayName: Deploy Common Dev
+    condition: eq(variables.shouldDeployCommon, 'true')
+    jobs:
+      - template: deploy-infra-template.yml
+        parameters:
+          subscriptionId: $(ppfTestSubscriptionId)
+          serviceConnectionName: "$(azureResourceManagerConnection)"
+          location: $(location)
+          cmsFile: "$(Build.SourcesDirectory)/infrastructure/main-common.bicep"
+          csmParametersFile: "$(Build.SourcesDirectory)/infrastructure/lib/parameters/common/dev.common.params.json"
+          environmentName: "If-PPF-Partners-Dev"
+
+  - stage: DevApp
+    condition: eq(variables.shouldDeployApp, 'true')
+    displayName: Deploy App Dev
+    jobs:
+      - job: UpdateDevAppParameter
+        displayName: "Update Parameters JSON"
+        steps:
+          - task: AzureCLI@2
+            displayName: "Extract overrideParameters"
+            name: extractInfo
+            inputs:
+              azureSubscription: "$(azureResourceManagerConnection)"
+              scriptType: "pscore"
+              scriptLocation: "scriptPath"
+              scriptPath: "$(Build.SourcesDirectory)/infrastructure/scripts/updateAppOverrideParameters.ps1"
+              arguments: '-parameterFilePath "$(Build.SourcesDirectory)/infrastructure/lib/parameters/app/dev.app.params.json"'
+          - publish: "$(Build.SourcesDirectory)/infrastructure"
+            artifact: DevApp
+      - template: deploy-infra-template.yml
+        parameters:
+          dependsOnJob: "UpdateDevAppParameter"
+          subscriptionId: $(ppfTestSubscriptionId)
+          serviceConnectionName: "$(azureResourceManagerConnection)"
+          location: $(location)
+          cmsFile: "$(Pipeline.Workspace)/main-app.bicep"
+          artifactName: "DevApp"
+          csmParametersFile: "$(Pipeline.Workspace)/lib/parameters/app/dev.app.params.json"
+          environmentName: "If-PPF-Partners-Dev"
+
+  - stage: TestCommon
+    displayName: Deploy Common Test
+    dependsOn: DevCommon
+    condition: and(ne(failed(), 'true'), ne(canceled(), 'true'), eq(variables.shouldDeployCommon, 'true'), eq(variables.shouldDeployToTest, 'true'))
+    jobs:
+      - template: deploy-infra-template.yml
+        parameters:
+          subscriptionId: $(ppfTestSubscriptionId)
+          serviceConnectionName: "$(azureResourceManagerConnection)"
+          location: $(location)
+          cmsFile: "$(Build.SourcesDirectory)/infrastructure/main-common.bicep"
+          csmParametersFile: "$(Build.SourcesDirectory)/infrastructure/lib/parameters/common/common.test.params.json"
+          environmentName: "If-PPF-Partners-Test"
+
+  - stage: TestApp
+    displayName: Deploy App Test
+    dependsOn: DevApp
+    condition: and(ne(failed(), 'true'), ne(canceled(), 'true'), eq(variables.shouldDeployApp, 'true'), eq(variables.shouldDeployToTest, 'true'))
+    jobs:
+      - job: UpdateTestAppParameter
+        displayName: "Update Parameters JSON"
+        steps:
+          - task: AzureCLI@2
+            displayName: "Extract overrideParameters"
+            name: extractInfo
+            inputs:
+              azureSubscription: "$(azureResourceManagerConnection)"
+              scriptType: "pscore"
+              scriptLocation: "scriptPath"
+              scriptPath: "$(Build.SourcesDirectory)/infrastructure/scripts/updateAppOverrideParameters.ps1"
+              arguments: '-parameterFilePath "$(Build.SourcesDirectory)/infrastructure/lib/parameters/app/test.app.params.json"'
+          - publish: "$(Build.SourcesDirectory)/infrastructure"
+            artifact: TestApp
+      - template: deploy-infra-template.yml
+        parameters:
+          dependsOnJob: "UpdateTestAppParameter"
+          subscriptionId: $(ppfTestSubscriptionId)
+          serviceConnectionName: "$(azureResourceManagerConnection)"
+          location: $(location)
+          artifactName: "TestApp"
+          cmsFile: "$(Pipeline.Workspace)/main-app.bicep"
+          csmParametersFile: "$(Pipeline.Workspace)/lib/parameters/app/test.app.params.json"
+          environmentName: "If-PPF-Partners-Test"
+
+      #
+      # THIS PART WAS REMOVED As THERE IS NO NEED TO RUN SQL SCRIPTS SEPARETLY
+      #
+
+      # - task: AzureCLI@2
+      #   displayName: Parse ArmOutputs
+      #   inputs:
+      #     azureSubscription: '$(azureResourceManagerConnection)'
+      #     scriptType: 'pscore'
+      #     scriptLocation: inlineScript
+      #     inlineScript: |
+      #       $outputs = ConvertFrom-Json '$(armOutputs)'
+      #       # Display entire JSON output (for debugging)
+      #       Write-Host "ARM Deployment Outputs: $($outputs | ConvertTo-Json -Depth 10)"
+      #       $DBUSER = $outputs.pg.value.pipelineUserPrincipalName
+      #       $DBSERVER = $outputs.pg.value.serverName
+      #       $DBNAME = $outputs.pg.value.database
+      #       $ROLE_NAME = $outputs.pg.value.appUserPrincipalName
+
+      #       @"
+      #       DBUSER=$DBUSER
+      #       DBSERVER=$DBSERVER
+      #       DBNAME=$DBNAME
+      #       ROLE_NAME=$ROLE_NAME
+      #       "@ | Out-File -FilePath $(Build.ArtifactStagingDirectory)/variables.env
+      #       Write-Host "##vso[artifact.upload containerfolder=variable-artifact;artifactname=variable-artifact]$(Build.ArtifactStagingDirectory)/variables.env"
+
+    # - job: PostgreSQL
+    #   dependsOn: DeployTest
+    #   steps:
+    #   - template: deploy-pipeline-pgsql-template.yml
+    #     parameters:
+    #       serviceConnectionName: '$(azureResourceManagerConnection)'
+    #       artifactName: 'variable-artifact'
+    #       fileName: 'variables.env'

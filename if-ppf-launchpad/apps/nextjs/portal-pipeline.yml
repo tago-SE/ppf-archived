@@ -1,0 +1,155 @@
+trigger:
+  branches:
+    include:
+      - '*'
+  paths:
+    include:
+      - apps/nextjs/*
+
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  tag: '$(Build.BuildId)'
+  imageName: ppf-launchpad-nextjs
+  azureSubscription: 'AISPPAT Partner Portal Framework Test auto'
+  containerRegistryName: ifppfprodcr
+  # Set to the location of where this pipeline is located in the project repo
+  projectSolutionDir:  'apps/nextjs'
+
+stages:
+  - stage: BuildDev
+    displayName: Build Dev
+    jobs:
+    - job: BuildDev
+      displayName: Build Dev and push to registry
+      variables:
+        - group: ppf-launchpad-nextjs-dev
+      steps:
+      # - task: npmAuthenticate@0
+      #   displayName: Add authentication to .npmrc
+      #   inputs:
+      #     workingFile: "$(Build.SourcesDirectory)/$(projectSolutionDir)/.npmrc"
+      - task: AzureCLI@2
+        displayName: 'Build and Push Container Image'
+        inputs: 
+          azureSubscription: $(azureSubscription)
+          scriptType: pscore
+          scriptLocation: inlineScript
+          inlineScript: |
+            $token = $(az acr login --name $(containerRegistryName) --expose-token --output tsv --query accessToken)
+            docker login $(containerRegistryName).azurecr.io --username 00000000-0000-0000-0000-000000000000 --password $token
+            docker image build ./$(projectSolutionDir) -f $(Build.SourcesDirectory)/$(projectSolutionDir)/Dockerfile -t $(containerRegistryName).azurecr.io/$(imageName):$(tag) -t $(containerRegistryName).azurecr.io/$(imageName):latest --build-arg KEY_VAULT_URL=$(KeyVault.Url) 
+            docker image push $(containerRegistryName).azurecr.io/$(imageName):$(tag)
+            docker image push $(containerRegistryName).azurecr.io/$(imageName):latest
+          workingDirectory: $(Build.SourcesDirectory)
+          
+  - stage: DeployDev 
+    displayName: Deploy to Dev
+    dependsOn: BuildDev
+    variables:
+      - group: ppf-launchpad-nextjs-dev
+      
+    jobs:
+      - deployment: Deploy
+        environment: If-PPF-Partners-Dev
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+              - task: AzureCLI@2
+                inputs:
+                  azureSubscription: $(azureSubscription)
+                  scriptType: "pscore"
+                  scriptLocation: "inlineScript"
+                  failOnStandardError: false
+                  inlineScript: |
+                      az extension remove -n containerapp
+                      az extension add -n containerapp --upgrade --allow-preview false
+                      Write-Host "Getting existing resource values"
+
+                      $identity = (az identity show  --resource-group $(Infrastructure.ResourceGroupName) --name $(Infrastructure.ContainerIdentityName) | convertfrom-json)
+                      [string] $clientId = $identity.clientId
+                      [string] $principalId = $identity.principalId
+                      Write-Host "ClientId: $($clientId)"
+                      Write-Host "PrincipalId: ($principalId)"
+
+                      [string] $appiConnectionString = (az monitor app-insights component show --resource-group $(Infrastructure.ResourceGroupName) --app $(Infrastructure.AppInsightsName) | convertfrom-json).connectionString
+                      Write-Host "appiConnectionString: ($appiConnectionString)"
+
+                      $jsonBody = @"
+                      {
+                          "properties": {
+                              "configuration": {
+                                  "registries": [
+                                      {
+                                          "identity": "/subscriptions/$(Infrastructure.SubscriptionId)/resourceGroups/$(Infrastructure.ResourceGroupName)/providers/Microsoft.ManagedIdentity/userAssignedIdentities/$(Infrastructure.ContainerRegistryIdentityName)",
+                                          "server": "$(containerRegistryName).azurecr.io",
+                                          "passwordSecretRef": "",
+                                          "username": ""
+                                      }
+                                  ],
+                                  "secrets": [
+                                      {
+                                          "name": "piplinesecret",
+                                          "identity": "/subscriptions/$(Infrastructure.SubscriptionId)/resourcegroups/$(Infrastructure.ResourceGroupName)/providers/Microsoft.ManagedIdentity/userAssignedIdentities/$(Infrastructure.ContainerIdentityName)",
+                                          "keyVaultUrl": "$(KeyVault.Url)secrets/piplinesecret"
+                                      },
+                                      {
+                                          "name": "appi-secret",
+                                          "value": "$appiConnectionString"
+                                      }
+                                  ]
+                              },
+                              "template": {
+                                  "containers": [
+                                      {
+                                          "image": "$(containerRegistryName).azurecr.io/$(imageName):$(build.buildid)",
+                                          "name": "$(Infrastructure.ContainerAppName)"
+                                      }
+                                  ]
+                              }
+                          }
+                      }
+                      "@
+                      Write-Host "Setting secrets"
+                      az rest --method patch `
+                      --url "/subscriptions/$(Infrastructure.SubscriptionId)/resourceGroups/$(Infrastructure.ResourceGroupName)/providers/Microsoft.App/containerApps/$(Infrastructure.ContainerAppName)?api-version=$(Infrastructure.AzureCliApiVersion)" `
+                      --headers Content-Type=application/json `
+                      --body $jsonBody
+
+                      if ($LASTEXITCODE -ne 0) {
+                        Write-Error "Error occurred during az rest command."
+                        exit $LASTEXITCODE
+                      }
+                      Write-Host "Patch done"
+                      (az containerapp show --resource-group $(Infrastructure.ResourceGroupName) --name $(Infrastructure.ContainerAppName) | convertfrom-json).properties.provisioningState
+                      (az containerapp show --resource-group $(Infrastructure.ResourceGroupName) --name $(Infrastructure.ContainerAppName) | convertfrom-json).properties.runningstatus
+                      start-sleep 30
+
+                      Write-Host "Adding env variables"
+                      az containerapp update `
+                      --name $(Infrastructure.ContainerAppName) `
+                      --resource-group $(Infrastructure.ResourceGroupName) `
+                      --set-env-vars `
+                      Application__Identity__ClientId=$clientId `
+                      Application__Identity__ObjectId=$principalId `
+                      Application__Host=$(Application.Host) `
+                      Build__BuildId=$(build.buildid) `
+                      Build__BuildNumber=$(build.buildNumber) `
+                      Redis__UserName=$principalId `
+                      Redis__HostName=$(Redis.HostName) `
+                      Redis__KeyPrefix=$(Redis.KeyPrefix) `
+                      NEXT_PUBLIC_RUNTIME_TEST=secretref:piplinesecret `
+                      Redis__Port=$(Redis.Port)
+                      if ($LASTEXITCODE -ne 0) {
+                        Write-Error "Error occurred during az rest command."
+                        exit $LASTEXITCODE
+                      }
+                      Write-Host "Environment variables updated"
+                      (az containerapp show --resource-group $(Infrastructure.ResourceGroupName) --name $(Infrastructure.ContainerAppName) | convertfrom-json).properties.provisioningState
+                      (az containerapp show --resource-group $(Infrastructure.ResourceGroupName) --name $(Infrastructure.ContainerAppName) | convertfrom-json).properties.runningstatus
+                      start-sleep 20
+                      (az containerapp show --resource-group $(Infrastructure.ResourceGroupName) --name $(Infrastructure.ContainerAppName) | convertfrom-json).properties.provisioningState
+                      (az containerapp show --resource-group $(Infrastructure.ResourceGroupName) --name $(Infrastructure.ContainerAppName) | convertfrom-json).properties.runningstatus

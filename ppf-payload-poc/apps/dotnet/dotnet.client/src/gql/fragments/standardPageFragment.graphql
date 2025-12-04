@@ -1,0 +1,11 @@
+#import "./heroFragment.graphql"
+#import "./layoutFragment.graphql"
+
+fragment StandardPageDetails on StandardPage {
+    hero {
+        ...Hero
+    }
+    layout {
+        ...Layout
+    }
+} 

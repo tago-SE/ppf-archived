@@ -1,0 +1,45 @@
+@import "tailwindcss";
+@source "./safelist.txt";
+@plugin "daisyui";
+@plugin "daisyui/theme" {
+    name: "light";
+    default: true;
+    --color-primary: "#0054f0";
+    --primary-content: "#faf9f7";
+
+    --color-secondary: "#f6d860";
+    --color-accent: "#37cdbe";
+    --color-neutral: "#f1ece8";
+
+    --color-base-100: "#faf9f7";
+    --color-base-200: "#f1ece8";
+    --color-base-300: "#331e11";
+    --color-base-content: "#331e11";
+
+    --color-info: "#f1ece8";
+   
+    --radius-box: 0;
+    --radius-field: 0;
+    --radius-selector: 0;
+    --depth: 0;
+
+    --input-border: "#6e625e";
+}
+@plugin "@tailwindcss/typography";
+@plugin "@iconify/tailwind4";
+
+@font-face {
+    font-family: "If Sans";
+    src: url("/25f07560f58bfccc2258382c1a5807ab.woff2") format("woff2");
+}
+
+@theme {
+    --font-sans: "If Sans"
+}
+
+.input:focus, .input:focus-within {
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--input-border);
+    outline: none;
+}

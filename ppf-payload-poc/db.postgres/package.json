@@ -1,0 +1,17 @@
+{
+  "name": "postgres-db",
+  "version": "1.0.0",
+  "description": "",
+  "main": "scripts/test_connection.js",
+  "scripts": {
+    "test": "node ./scripts/test_connection.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "dotenv": "^16.4.5",
+    "@azure/identity": "latest",
+    "pg": "latest"
+  }
+}

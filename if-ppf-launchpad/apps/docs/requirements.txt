@@ -1,0 +1,4 @@
+mkdocs>=1.6.0
+mkdocs-material==9.5.29
+mkdocs-macros-plugin==1.0.5
+termcolor==2.4.0

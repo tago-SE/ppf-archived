@@ -1,0 +1,1 @@
+export { editedByFieldPlugin } from './editedByFieldPlugin'

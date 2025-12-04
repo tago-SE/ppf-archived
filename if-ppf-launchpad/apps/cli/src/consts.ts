@@ -1,0 +1,1 @@
+export const docsBaseUrl = 'https://yellow-wave-017382503.5.azurestaticapps.net/'

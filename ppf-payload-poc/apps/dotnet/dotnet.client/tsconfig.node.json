@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+
+    "plugins": [
+      {
+        "name": "gql.tada/ts-plugin",
+        "schema": "http://localhost:3000/api/graphql",
+        "tadaOutputLocation": "./src/graphql-env.d.ts"
+      }
+    ]
+  },
+  "include": ["vite.config.ts"]
+}

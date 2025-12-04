@@ -1,0 +1,84 @@
+parameters:
+- name: serviceConnectionName
+  type: string
+- name: artifactName
+  type: string 
+- name: fileName
+  type: string
+steps:
+- task: DownloadPipelineArtifact@2
+  inputs:
+    artifact: '${{ parameters.artifactName }}'
+    path: '$(Pipeline.Workspace)'
+- task: PowerShell@2
+  displayName: 'Load Variables'
+  inputs:
+    targetType: 'inline'
+    script: |
+      Get-Content "$(Pipeline.Workspace)/${{ parameters.fileName }}" | ForEach-Object {
+        $name, $value = $_ -split "="
+        Write-Host "##vso[task.setvariable variable=$name]$value"
+      }
+- task: PowerShell@2
+  displayName: 'Validate Variables'
+  inputs:
+    targetType: 'inline'
+    script: |
+      Write-Host "Validating runtime variables..."
+
+      $missingVariables = @()
+
+      if (-not $env:DBUSER) {
+        $missingVariables += "DBUSER"
+      }
+      if (-not $env:DBSERVER) {
+        $missingVariables += "DBSERVER"
+      }
+      if (-not $env:DBNAME) {
+        $missingVariables += "DBNAME"
+      }
+      if (-not $env:ROLE_NAME) {
+        $missingVariables += "ROLE_NAME"
+      }
+
+      if ($missingVariables.Count -gt 0) {
+        Write-Host "##vso[task.logissue type=error]Missing required variables: $($missingVariables -join ', ')"
+        exit 1  # Fail the pipeline
+      }
+
+      Write-Host "All runtime variables are set."
+      Write-Host "dbUser: $env:DBUSER"
+      Write-Host "dbServer: $env:DBSERVER"
+      Write-Host "dbName: $env:DBNAME"
+      Write-Host "role_name: $env:ROLE_NAME"
+
+
+- task: AzureCLI@2
+  displayName: "Get AccessToken"
+  inputs:
+    azureSubscription: ${{ parameters.serviceConnectionName }}
+    scriptType: 'pscore'
+    scriptLocation: inlineScript
+    inlineScript: | 
+      az account show
+      $DBPASSWORD = az account get-access-token --resource https://ossrdbms-aad.database.windows.net --query accessToken --output tsv
+      if (-not $DBPASSWORD) {
+        Write-Host "ERROR: Failed to retrieve access token"
+        exit 1
+      }
+      Write-Host "##vso[task.setvariable variable=DBPASSWORD]$DBPASSWORD"
+      Write-Host "Access token retrieved successfully."
+
+- task: PowerShell@2
+  displayName: "Check If Role Exists"
+  inputs:
+    targetType: "inline"
+    script: |
+      $queryFilePath = "infrastructure/sql/select_rolename.sql"
+      $QUERY = Get-Content -Path $queryFilePath -Raw
+      $QUERY = $QUERY -replace '{{role_name}}', "$env:ROLE_NAME"
+      Write-Host "SQL:"
+      Write-Host "$QUERY"
+      $result = az postgres flexible-server execute -n "$env:DBSERVER" -u "$env:DBUSER" -p "$env:DBPASSWORD" -d "$env:DBNAME" -q $QUERY --verbose | ConvertFrom-Json
+      Write-Host "Role Query Result:"
+      Write-Host ($result | ConvertTo-Json -Depth 10)

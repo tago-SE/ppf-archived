@@ -1,0 +1,16 @@
+fragment Related on Page_Related  {
+    heading
+    relatedContent {
+        id
+        title
+        slug
+        meta {
+            title
+            description
+        }
+        categories {
+            id
+            title
+        }
+    }             
+}

@@ -1,0 +1,11 @@
+{
+  "files": [
+    "base.json",
+    "nextjs.json",
+    "react-library.json",
+    "solidjs.json"
+  ],
+  "name": "tsconfig",
+  "private": true,
+  "version": "0.0.0"
+}

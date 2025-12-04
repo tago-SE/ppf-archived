@@ -1,0 +1,17 @@
+#import "./layoutFragment.graphql"
+
+fragment ProductDetails on ProductPage {
+    products {
+        type
+        category
+        consumers
+        country
+        references {
+            id
+            productId
+        }
+    }
+    layout {
+        ...Layout
+    }
+} 

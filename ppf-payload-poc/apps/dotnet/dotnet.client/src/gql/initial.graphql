@@ -1,0 +1,57 @@
+query Initial($slug: String!, $draftMode: Boolean!) {
+    TenantBySlug(slug: $slug) {
+        id 
+        name
+        slug
+        defaultLocale
+        siteLocales
+        headerNavItems {
+            id
+            link {
+                type
+                newTab
+                url
+                label
+                reference {
+                    relationTo
+                    value {
+                        ... on Page {
+                            __typename
+                            id
+                            slug
+                            pageTemplate
+                        }
+                    }
+                }
+            }
+        }
+        footerNavItems {
+            id
+            link {
+                type
+                newTab
+                url
+                label
+                reference {
+                    relationTo
+                    value {
+                        ... on Page {
+                            __typename
+                            id
+                            slug
+                            pageTemplate
+                        }
+                    }
+                }
+            }
+        }
+    }
+    SitemapByTenant(tenantSlug: $slug, draftMode: $draftMode) {
+        docs {
+            id
+            slug
+            pageTemplate
+            collection
+        }
+    }
+}

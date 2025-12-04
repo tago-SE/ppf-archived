@@ -1,0 +1,23 @@
+{
+  "extends": "tsconfig/react-library.json",
+  "include": ["."],
+  "exclude": ["dist", "build", "node_modules"],
+  "compilerOptions": {
+    "outDir": "dist",
+    "jsx": "preserve",
+    "moduleResolution": "bundler",
+    "emitDeclarationOnly": false,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "resolveJsonModule": true,
+    "plugins": [
+      {
+        "name": "gql.tada/ts-plugin",
+        "schema": "http://localhost:3000/api/graphql",
+        "tadaOutputLocation": "./src/graphql-env.d.ts"
+      }
+    ],
+    "paths": {
+      "@payload-types": ["./src/payload-types.ts"]
+    }
+  }
+}

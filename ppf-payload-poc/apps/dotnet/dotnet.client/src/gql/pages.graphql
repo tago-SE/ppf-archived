@@ -1,0 +1,59 @@
+#import "./fragments/pageBaseFragment.graphql"
+#import "./fragments/productPageFragment.graphql"
+#import "./fragments/landingPageFragment.graphql"
+#import "./fragments/articlePageFragment.graphql"
+#import "./fragments/standardPageFragment.graphql"
+#import "./fragments/documentationPageFragment.graphql"
+
+query Page($tenantSlug: String!, $pageSlug: String, $locale: LocaleInputType, $draftMode: Boolean!){
+    PagesByTenant(tenantSlug: $tenantSlug, where: { slug: { equals: $pageSlug } }, locale: $locale, draftMode: $draftMode) {
+        docs {
+            ...PageBase
+        }
+    }
+}
+
+query DocumentationPage($tenantSlug: String!, $pageSlug: String, $locale: LocaleInputType, $draftMode: Boolean!){
+    DocumentationPagesByTenant(tenantSlug: $tenantSlug, where: { slug: { equals: $pageSlug } }, locale: $locale, draftMode: $draftMode) {
+        docs {
+            ...PageBase
+            ...DocumentationPageDetails
+        }
+    }
+}
+
+query ProductPage($tenantSlug: String!, $pageSlug: String, $locale: LocaleInputType, $draftMode: Boolean!){
+    ProductPagesByTenant(tenantSlug: $tenantSlug, where: { slug: { equals: $pageSlug } }, locale: $locale, draftMode: $draftMode) {
+        docs {
+            ...PageBase
+            ...ProductDetails
+        }
+    }
+}
+
+query LandingPage($tenantSlug: String!, $pageSlug: String, $locale: LocaleInputType, $draftMode: Boolean!){
+    LandingPagesByTenant(tenantSlug: $tenantSlug, where: { slug: { equals: $pageSlug } }, locale: $locale, draftMode: $draftMode) {
+        docs {
+            ...PageBase
+            ...LandingPageDetails
+        }
+    }
+}
+ 
+query ArticlePage($tenantSlug: String!, $pageSlug: String, $locale: LocaleInputType, $draftMode: Boolean!){
+    ArticlePagesByTenant(tenantSlug: $tenantSlug, where: { slug: { equals: $pageSlug } }, locale: $locale, draftMode: $draftMode) {
+        docs {
+            ...PageBase
+            ...ArticlePageDetails
+        }
+    }
+}
+
+query StandardPage($tenantSlug: String!, $pageSlug: String, $locale: LocaleInputType, $draftMode: Boolean!){
+    StandardPagesByTenant(tenantSlug: $tenantSlug, where: { slug: { equals: $pageSlug } }, locale: $locale, draftMode: $draftMode) {
+        docs {
+            ...PageBase
+            ...StandardPageDetails
+        }
+    }
+}

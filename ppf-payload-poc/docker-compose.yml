@@ -1,0 +1,79 @@
+# docker-compose up --build
+services:
+  postgres_db:
+    container_name: postgres_ca_payload
+    image: postgres:latest
+    restart: always
+    ports:
+      - "5432:5432"
+    networks:
+      - postgres-network
+    environment: 
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    env_file:
+      - ./db.postgres/.env 
+    volumes:
+      # We share the folder `data-db` in our root repository, with the default PostgreSQL data path
+      # It means that every time the repository is modifying the data inside
+      # of `/var/lib/postgresql/data/`, automatically the change will appear in `data-db`
+      - ./db.postgres/data-db:/var/lib/postgresql/data
+    deploy:
+      replicas: 1
+
+  pgadmin:
+    container_name: pgadmin_ca_payload
+    image: dpage/pgadmin4
+    restart: always
+    environment: 
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    env_file:
+      - ./db.postgres/.env 
+    ports:
+      - "5050:80"
+    networks:
+      - postgres-network
+    volumes:
+      - ./db.postgres/data-pgadmin/:/var/lib/pgadmin/
+    deploy:
+      replicas: 1
+  
+  cms: 
+    container_name: payload-cms
+    depends_on:
+      - postgres_db
+      - pgadmin
+    build:
+      context: apps/payload
+      dockerfile: ./Dockerfile
+      args: 
+        NEXT_PUBLIC_SERVER_URL: "http://localhost:3000"
+    environment: 
+      DATABASE_SSL: "1"
+    ports:
+      - "3000:3000"
+    env_file: 
+      - ./apps/payload/.env
+
+  # dotnetportal:
+  #     container_name: payload-dotnet-portal
+  #     build:
+  #       context: .
+  #       dockerfile: ./apps/dotnet/dotnet.Server/Dockerfile
+  #       args:
+  #         VITE_TENANT_ID: "674078b8e187f5459194a759"
+  #         VITE_SERVER_URL: "http://localhost:5173/cms"
+  #         VITE_CMS_URL: "http://localhost:3000"
+  #     ports:
+  #       - "5173:3000"
+
+networks: 
+  postgres-network:
+    driver: bridge

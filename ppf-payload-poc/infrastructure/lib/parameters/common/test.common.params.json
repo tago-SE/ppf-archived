@@ -1,0 +1,27 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "env": {
+      "value": "test"
+    },
+    "location": {
+      "value": "westeurope"
+    },
+    "namePrefix": {
+      "value": "ppf-payloadcms"
+    },
+    "storageName": {
+      "value": ""
+    },
+    "developerGroupId": {
+      "value": "0260419f-d8ca-4eda-a5fa-04e81875467b"
+    },
+    "dbAdminGroupId": {
+      "value": "2edabba4-5388-43d6-94dc-58dc84010124"
+    },
+    "dbAdminGroupPrincipalName": {
+      "value": "GA_AISPPAT_SQL_Admins_Test"
+    }
+  }
+}
